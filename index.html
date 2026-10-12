@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>JP-8 Hesaplayıcı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow, left-aligned column. Density block on top, then three linked quantity rows split by hairlines. */
+:root {
+  --bg: #EDF0F1;
+  --ink: #11181C;
+  --muted: #5F6B73;
+  --line: #CBD3D8;
+  --accent: #8F5700;
+  --warn: #B3261E;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1418;
+    --ink: #E7ECEE;
+    --muted: #93A0A8;
+    --line: #2A353B;
+    --accent: #E3A93C;
+    --warn: #FF8F85;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1418;
+  --ink: #E7ECEE;
+  --muted: #93A0A8;
+  --line: #2A353B;
+  --accent: #E3A93C;
+  --warn: #FF8F85;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-inline: 16px;
+  padding-block: 28px 44px;
+}
+main { max-width: 440px; margin-inline: auto; min-width: 0; }
+
+.eyebrow {
+  font: 500 12px/1 var(--font-num);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+h1 {
+  font: 600 24px/1.2 var(--font-ui);
+  letter-spacing: -0.01em;
+  margin: 10px 0 8px;
+  text-wrap: balance;
+}
+.lede { margin: 0 0 28px; color: var(--muted); max-width: 38ch; }
+
+.meta { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tag { font-size: 12px; color: var(--muted); }
+.is-src .tag { color: var(--accent); font-weight: 500; }
+
+.num {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  font: 500 34px/1.15 var(--font-num);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 4px 0;
+  outline: none;
+}
+.num.sm { font-size: 26px; }
+.num::placeholder { color: var(--line); }
+.is-src .num { border-bottom-color: var(--accent); }
+.num:focus-visible { border-bottom-color: var(--accent); }
+.num[aria-invalid="true"] { color: var(--warn); border-bottom-color: var(--warn); }
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.seg button {
+  font: 500 12px var(--font-num);
+  min-height: 32px;
+  padding: 6px 11px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.unit { font: 500 12px var(--font-num); letter-spacing: 0.06em; color: var(--muted); }
+
+.density { padding-bottom: 20px; }
+.density .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chip {
+  display: inline-flex;
+  gap: 8px;
+  min-height: 32px;
+  align-items: center;
+  font: 400 12px var(--font-num);
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.chip .k { color: var(--muted); }
+.chip[aria-pressed="true"] { border-color: var(--accent); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 12px;
+  padding-block: 18px;
+  border-top: 1px solid var(--line);
+}
+.row .num { grid-column: 1 / -1; }
+
+.foot { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+.note { margin: 0; font-size: 12px; line-height: 1.55; color: var(--muted); flex: 1 1 240px; min-width: 0; }
+.clear {
+  font: 500 13px var(--font-ui);
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+:root{color-scheme:light}
+body{margin:0}
+</style>
+</head>
+<body>
+
+<main>
+  <p class="eyebrow">NATO F-34 · Jet yakıtı</p>
+  <h1>JP-8 Hesaplayıcı</h1>
+  <p class="lede">Yoğunluğu gir, sonra hacim, pound veya kilogramdan birini yaz. Diğer ikisi anında hesaplanır.</p>
+
+  <section class="density" aria-label="Yoğunluk">
+    <div class="head">
+      <div class="meta"><label for="dens">Yoğunluk</label></div>
+      <div class="seg" role="group" aria-label="Yoğunluk birimi">
+        <button type="button" data-du="kgl" aria-pressed="true">kg/L</button>
+        <button type="button" data-du="lbgal" aria-pressed="false">lb/gal</button>
+      </div>
+    </div>
+    <input id="dens" class="num sm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="0,800" value="0,800">
+    <div class="chips" role="group" aria-label="JP-8 tipik yoğunluk değerleri">
+      <button type="button" class="chip" data-d="min" aria-pressed="false"><span class="k">min</span><span class="v"></span></button>
+      <button type="button" class="chip" data-d="typ" aria-pressed="true"><span class="k">tipik</span><span class="v"></span></button>
+      <button type="button" class="chip" data-d="max" aria-pressed="false"><span class="k">maks</span><span class="v"></span></button>
+    </div>
+  </section>
+
+  <section class="row" id="row-vol">
+    <div class="meta"><label for="vol">Hacim</label><span class="tag" id="tag-vol"></span></div>
+    <div class="seg" role="group" aria-label="Hacim birimi">
+      <button type="button" data-vu="L" aria-pressed="true">L</button>
+      <button type="button" data-vu="gal" aria-pressed="false">gal (US)</button>
+    </div>
+    <input id="vol" class="num" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="0">
+  </section>
+
+  <section class="row" id="row-lb">
+    <div class="meta"><label for="lb">Pound</label><span class="tag" id="tag-lb"></span></div>
+    <span class="unit">lb</span>
+    <input id="lb" class="num" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="0">
+  </section>
+
+  <section class="row" id="row-kg">
+    <div class="meta"><label for="kg">Kilogram</label><span class="tag" id="tag-kg"></span></div>
+    <span class="unit">kg</span>
+    <input id="kg" class="num" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="0">
+  </section>
+
+  <div class="foot">
+    <p class="note">Yoğunluk 15 °C değeridir. JP-8 (MIL-DTL-83133) için sınır 0,775 – 0,840 kg/L. Gerçek değeri yakıtın analiz sertifikasından al. 1 gal (US) = 3,78541 L.</p>
+    <button type="button" class="clear" id="clear">Temizle</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  var LB_PER_KG = 2.2046226218;
+  var L_PER_GAL = 3.785411784;
+  var LB_PER_GAL_PER_KGL = LB_PER_KG * L_PER_GAL; /* 1 kg/L = 8,3454 lb/gal */
+  var JP8 = { min: 0.775, typ: 0.800, max: 0.840 };
+
+  /* src: hangi alan girdi. val: o alanın temel birimdeki değeri (L, lb veya kg). dens: kg/L */
+  var st = { src: 'vol', val: 1000, dens: 0.8, vu: 'L', du: 'kgl' };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = { vol: $('vol'), lb: $('lb'), kg: $('kg'), dens: $('dens') };
+
+  function parse(s) {
+    s = String(s).replace(/\s/g, '').replace(',', '.');
+    if (s === '') return null;
+    if (s === '.' || !/^\d*\.?\d*$/.test(s)) return NaN;
+    return Number(s);
+  }
+  function fmt(n, d) {
+    if (n == null || !isFinite(n)) return '';
+    var s = n.toFixed(d);
+    if (s.indexOf('.') > -1) s = s.replace(/0+$/, '').replace(/\.$/, '');
+    return s.replace('.', ',');
+  }
+  function auto(n) { return fmt(n, Math.abs(n) >= 100 ? 2 : 3); }
+  function fixed3(n) { return n.toFixed(3).replace('.', ','); }
+
+  function densToDisp(k) { return st.du === 'kgl' ? k : k * LB_PER_GAL_PER_KGL; }
+  function densFromDisp(v) { return st.du === 'kgl' ? v : v / LB_PER_GAL_PER_KGL; }
+  function volToDisp(L) { return st.vu === 'L' ? L : L / L_PER_GAL; }
+  function volFromDisp(v) { return st.vu === 'L' ? v : v * L_PER_GAL; }
+
+  function derive() {
+    var v = st.val, d = st.dens, L = null, kg = null, lb = null;
+    if (v == null) return { vol: null, lb: null, kg: null };
+    if (st.src === 'vol') {
+      L = v;
+      if (d > 0) { kg = L * d; lb = kg * LB_PER_KG; }
+    } else if (st.src === 'kg') {
+      kg = v; lb = kg * LB_PER_KG;
+      if (d > 0) L = kg / d;
+    } else {
+      lb = v; kg = lb / LB_PER_KG;
+      if (d > 0) L = kg / d;
+    }
+    return { vol: L == null ? null : volToDisp(L), lb: lb, kg: kg };
+  }
+
+  function flag(input, bad) { input.setAttribute('aria-invalid', bad ? 'true' : 'false'); }
+
+  function render(skip) {
+    var out = derive();
+    ['vol', 'lb', 'kg'].forEach(function (id) {
+      var isSrc = st.src === id;
+      $('row-' + id).classList.toggle('is-src', isSrc);
+      $('tag-' + id).textContent = isSrc ? 'girdi' : 'hesaplanan';
+      if (id === skip) return;
+      var n = out[id];
+      el[id].value = n == null ? '' : (isSrc ? fmt(n, 4) : auto(n));
+      flag(el[id], false);
+    });
+  }
+
+  function syncChips() {
+    document.querySelectorAll('.chip').forEach(function (c) {
+      var on = st.dens != null && Math.abs(st.dens - JP8[c.dataset.d]) < 1e-4;
+      c.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  function chipLabels() {
+    document.querySelectorAll('.chip').forEach(function (c) {
+      c.querySelector('.v').textContent = fixed3(densToDisp(JP8[c.dataset.d]));
+    });
+  }
+  function setPressed(group, attr, value) {
+    group.querySelectorAll('button').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset[attr] === value ? 'true' : 'false');
+    });
+  }
+
+  /* Miktar alanları: yazılan alan girdi olur */
+  function bindQty(id, toBase) {
+    el[id].addEventListener('input', function () {
+      var v = parse(el[id].value);
+      var bad = v != null && isNaN(v);
+      st.src = id;
+      st.val = (v == null || bad) ? null : toBase(v);
+      render(id);
+      flag(el[id], bad);
+    });
+  }
+  bindQty('vol', volFromDisp);
+  bindQty('lb', function (v) { return v; });
+  bindQty('kg', function (v) { return v; });
+
+  el.dens.addEventListener('input', function () {
+    var v = parse(el.dens.value);
+    var ok = v != null && !isNaN(v) && v > 0;
+    st.dens = ok ? densFromDisp(v) : null;
+    flag(el.dens, v != null && !ok);
+    render('dens');
+    syncChips();
+  });
+
+  document.querySelectorAll('[data-vu]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      st.vu = b.dataset.vu;
+      setPressed(b.parentNode, 'vu', st.vu);
+      render();
+    });
+  });
+  document.querySelectorAll('[data-du]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      st.du = b.dataset.du;
+      setPressed(b.parentNode, 'du', st.du);
+      el.dens.value = st.dens > 0 ? fixed3(densToDisp(st.dens)) : '';
+      flag(el.dens, false);
+      chipLabels();
+      syncChips();
+    });
+  });
+  document.querySelectorAll('.chip').forEach(function (c) {
+    c.addEventListener('click', function () {
+      st.dens = JP8[c.dataset.d];
+      el.dens.value = fixed3(densToDisp(st.dens));
+      flag(el.dens, false);
+      render();
+      syncChips();
+    });
+  });
+
+  $('clear').addEventListener('click', function () {
+    st.val = null;
+    render();
+    el.vol.focus();
+  });
+
+  /* Dokununca değer seçilsin, üstüne yazmak kolay olsun */
+  ['vol', 'lb', 'kg', 'dens'].forEach(function (id) {
+    el[id].addEventListener('focus', function () {
+      setTimeout(function () { el[id].select(); }, 0);
+    });
+  });
+
+  chipLabels();
+  syncChips();
+  render();
+})();
+</script>
+</body>
+</html>
